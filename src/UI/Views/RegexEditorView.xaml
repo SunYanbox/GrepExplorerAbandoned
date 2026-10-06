@@ -1,0 +1,107 @@
+<UserControl x:Class="GrepExplorer.UI.Views.RegexEditorView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:GrepExplorer.UI.Controls">
+    <Grid Margin="4">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="2*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- 工具栏 -->
+        <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="0,0,0,6">
+            <Button Content="复制全部" Command="{Binding CopyAllCommand}" Padding="10,2" Margin="0,0,4,0"/>
+            <Button Content="导出全部 (.txt)" Command="{Binding ExportAllCommand}" Padding="10,2" Margin="0,0,12,0"/>
+            <TextBlock Text="{Binding Title}" VerticalAlignment="Center" Opacity="0.7"/>
+        </StackPanel>
+
+        <!-- 错误提示（即时） -->
+        <Border Grid.Row="1" Grid.ColumnSpan="2" Padding="6,3" Margin="0,0,0,6" CornerRadius="3">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Background" Value="Transparent"/>
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding HasError}" Value="True">
+                            <Setter Property="Background" Value="#33D12424"/>
+                            <Setter Property="Visibility" Value="Visible"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+            <TextBlock Text="{Binding ErrorText}" Foreground="#E5514B" TextWrapping="Wrap"/>
+        </Border>
+
+        <!-- 模式编辑器 -->
+        <DockPanel Grid.Row="2" Grid.Column="0" Margin="0,0,8,0">
+            <TextBlock DockPanel.Dock="Top" Text="正则表达式（.NET Regex）"/>
+            <!-- 拾取模式面板（命令编辑器「进入正则编辑器」后必须能确认/取消，否则搜索页永远等不到回填） -->
+            <Border DockPanel.Dock="Top" Padding="6,4" Margin="0,0,0,4" CornerRadius="3" Background="#22808080"
+                    Visibility="{Binding IsPickMode, Converter={StaticResource BoolToVis}}">
+                <StackPanel>
+                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+                        <Button Content="添加当前表达式" Command="{Binding AddCurrentExpressionCommand}" Padding="8,2" Margin="0,0,6,0"
+                                ToolTip="把上方编辑器里的正则加入列表"/>
+                        <Button Content="确认并回填到命令编辑器" Command="{Binding ConfirmPickCommand}" Padding="8,2" Margin="0,0,6,0"/>
+                        <Button Content="取消" Command="{Binding CancelPickCommand}" Padding="8,2"/>
+                    </StackPanel>
+                    <ItemsControl ItemsSource="{Binding Expressions}" Margin="0,4,0,0">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <DockPanel Margin="0,1">
+                                    <Button DockPanel.Dock="Right" Content="✕" Padding="4,0" FontSize="10"
+                                            Command="{Binding DataContext.RemoveExpressionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}" ToolTip="从列表移除"/>
+                                    <TextBlock Text="{Binding}" FontFamily="Consolas" TextWrapping="Wrap"/>
+                                </DockPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+            <controls:CodeEditor x:Name="PatternEditor" CodeText="{Binding PatternText, UpdateSourceTrigger=PropertyChanged}"
+                                 FontSize="14" ShowLineNumbers="False"/>
+        </DockPanel>
+
+        <!-- 语法速查面板 -->
+        <Border Grid.Row="2" Grid.Column="1" Width="340" BorderThickness="1" CornerRadius="4" Padding="4">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Top" Text="当前方言为 .NET Regex" FontWeight="Bold" Margin="0,0,0,4"/>
+                <TextBlock DockPanel.Dock="Bottom" Text="单击任意条目 → 插入到光标处；鼠标悬停看用法示例。"
+                           TextWrapping="Wrap" Opacity="0.6" FontSize="11" Margin="0,4,0,0"/>
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding QuickItems}" AlternationCount="100">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Padding="6,3" CornerRadius="3" Margin="0,1"
+                                        ToolTip="{Binding Example}" Background="Transparent"
+                                        MouseLeftButtonUp="OnQuickItemClick" Cursor="Hand">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding Token}" FontFamily="Consolas" FontWeight="SemiBold"
+                                                   MinWidth="110" VerticalAlignment="Top"/>
+                                        <TextBlock Text="{Binding Description}" TextWrapping="Wrap" Opacity="0.75"
+                                                   MaxWidth="150" VerticalAlignment="Top"/>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
+
+        <!-- 测试区 -->
+        <TextBlock Grid.Row="3" Grid.ColumnSpan="2" Text="测试文本（命中实时高亮）" Margin="0,6,0,2"/>
+        <controls:CodeEditor Grid.Row="4" Grid.ColumnSpan="2" x:Name="TestEditor"
+                             CodeText="{Binding TestText, UpdateSourceTrigger=PropertyChanged}"
+                             ShowLineNumbers="False" FontSize="13" MinHeight="80"/>
+    </Grid>
+</UserControl>

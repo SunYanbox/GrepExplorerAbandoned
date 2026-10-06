@@ -1,0 +1,196 @@
+<UserControl x:Class="GrepExplorer.UI.Views.SearchView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:GrepExplorer.UI.Controls">
+    <DockPanel Margin="8">
+        <!-- 状态栏 -->
+        <Border DockPanel.Dock="Bottom" Padding="4,6">
+            <TextBlock Text="{Binding Toast}" Opacity="0.8" TextWrapping="Wrap" MaxWidth="760"/>
+        </Border>
+
+        <!-- 勾选组（两模式共用）+ 组管理入口 -->
+        <Border DockPanel.Dock="Top" Padding="0,0,0,6">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="勾选组：" VerticalAlignment="Center"/>
+                <ItemsControl ItemsSource="{Binding GroupChecks}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <CheckBox Content="{Binding Alias}" IsChecked="{Binding IsChecked, Mode=TwoWay}"
+                                      Margin="4,0" VerticalAlignment="Center"
+                                      ToolTip="勾选后该组的 Include/Exclude 规则自动并入本次搜索"/>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Text="（暂无组，可到「组管理」新建）" VerticalAlignment="Center" Opacity="0.6" Margin="6,0"
+                           Visibility="{Binding GroupChecks.Count, Converter={StaticResource ZeroToVis}}"/>
+                <Button Content="刷新组" Command="{Binding ReloadGroupsCommand}" Padding="6,1" Margin="8,0"
+                        ToolTip="重新读取组列表（组管理页改动后）"/>
+                <Button Content="管理组…" Command="{Binding ManageGroupsCommand}" Padding="6,1" Margin="4,0"
+                        ToolTip="跳转到组管理页：新建 / 编辑 / 删除组"/>
+            </StackPanel>
+        </Border>
+
+        <TabControl x:Name="ModeTabs" SelectionChanged="OnModeTabChanged" Loaded="OnModeTabsLoaded" SelectedIndex="1">
+            <!-- ============ Glob 模式：默认命令编辑器 GUI，表单为次选 ============ -->
+            <TabItem Header="Glob 模式">
+                <TabControl x:Name="GlobTabs">
+                    <TabItem Header="命令编辑器（GUI，默认）">
+                        <ContentControl Content="{Binding CommandEditor}"/>
+                    </TabItem>
+                    <TabItem Header="表单（简易）">
+                        <Grid Margin="6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Margin="0,0,6,0">
+                                <TextBlock Text="起始目录"/>
+                                <DockPanel Margin="0,2,0,8">
+                                    <Button DockPanel.Dock="Right" Content="浏览…" Command="{Binding BrowseGlobRootCommand}" Padding="8,1" Margin="4,0,0,0"/>
+                                    <TextBox Text="{Binding GlobRoot, UpdateSourceTrigger=PropertyChanged}"/>
+                                </DockPanel>
+                                <TextBlock Text="Glob 表达式（每行一条；* 不跨 /，** 跨 /，以 / 开头相对搜索根，! 前缀 = 排除）"/>
+                                <TextBox Text="{Binding GlobExpressions, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True"
+                                         MinHeight="64" FontFamily="Consolas" VerticalScrollBarVisibility="Auto" TextWrapping="NoWrap"/>
+                                <controls:TagListControl Title="Include（额外包含）"
+                                    Hint="语法：回车逐条添加（每行一条）；* 匹配单层、** 跨目录、? 单字符；以 ! 开头 = 反向（排除）。"
+                                    ListText="{Binding GlobIncludes}"/>
+                                <controls:TagListControl Title="Exclude"
+                                    Hint="语法：回车逐条添加；命中任意一条即排除该文件；以 ! 开头 = 豁免（re-include）。"
+                                    ListText="{Binding GlobExcludes}"/>
+                                <controls:TagListControl Title="Exclude-From（规则文件）"
+                                    Hint="语法：回车逐条添加「文件路径」；每个文件内每行是一条排除规则（# 开头为注释）。"
+                                    ListText="{Binding GlobExcludeFroms}"/>
+                                <controls:TagListControl Title="Exclude-Dir"
+                                    Hint="语法：回车逐条添加「目录名或相对路径」（如 bin、node_modules、obj/Debug），整个目录剪除。"
+                                    ListText="{Binding GlobExcludeDirs}"/>
+                            </StackPanel>
+                            <DockPanel Grid.Column="1" Margin="6,0,0,0">
+                                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal">
+                                    <Button Content="执行" Command="{Binding ExecuteGlobCommand}" Padding="16,3" Margin="0,0,8,0"/>
+                                    <Button Content="取消" Command="{Binding CancelCommand}" Padding="12,3" Margin="0,0,8,0" IsEnabled="{Binding IsRunning}"/>
+                                    <TextBlock Text="已扫描：" VerticalAlignment="Center"/><TextBlock Text="{Binding ScannedCount}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <TextBlock Text="命中：" VerticalAlignment="Center"/><TextBlock Text="{Binding GlobMatchCount}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,6,0,0">
+                                    <Button Content="复制全部" Command="{Binding CopyGlobResultCommand}" Padding="10,2" Margin="0,0,8,0"/>
+                                    <Button Content="写入 Markdown 编辑器" Command="{Binding WriteGlobToEditorCommand}" Padding="10,2" Margin="0,0,8,0"
+                                            ToolTip="带元数据（front matter）写入 Markdown 编辑器"/>
+                                    <Button Content="导出 Markdown 列表" Command="{Binding ExportGlobMarkdownCommand}" Padding="10,2"/>
+                                </StackPanel>
+                                <controls:CodeEditor CodeText="{Binding GlobResultText, Mode=OneWay}" IsReadOnly="True" FontSize="12"/>
+                            </DockPanel>
+                        </Grid>
+                    </TabItem>
+                </TabControl>
+            </TabItem>
+
+            <!-- ============ Grep 模式：默认命令编辑器 GUI，表单为次选 ============ -->
+            <TabItem Header="Grep 模式">
+                <TabControl x:Name="GrepTabs">
+                    <TabItem Header="命令编辑器（GUI，默认）">
+                        <ContentControl Content="{Binding CommandEditor}"/>
+                    </TabItem>
+                    <TabItem Header="表单（简易）">
+                        <Grid Margin="6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Margin="0,0,6,0">
+                                <TextBlock Text="起始目录"/>
+                                <DockPanel Margin="0,2,0,8">
+                                    <Button DockPanel.Dock="Right" Content="浏览…" Command="{Binding BrowseGrepRootCommand}" Padding="8,1" Margin="4,0,0,0"/>
+                                    <TextBox Text="{Binding GrepRoot, UpdateSourceTrigger=PropertyChanged}"/>
+                                </DockPanel>
+                                <TextBlock Text="正则（.NET Regex，每行一条，OR 语义；-F 在命令编辑器中指定）"/>
+                                <TextBox Text="{Binding PatternsText, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True"
+                                         MinHeight="56" FontFamily="Consolas" VerticalScrollBarVisibility="Auto" TextWrapping="NoWrap"/>
+                                <controls:TagListControl Title="Pattern 文件（-f）"
+                                    Hint="语法：回车逐条添加「文件路径」；文件内每行是一个 Pattern。"
+                                    ListText="{Binding PatternFilesText}"/>
+                                <controls:TagListControl Title="Include（--include）"
+                                    Hint="语法：回车逐条添加（每行一条）；* 匹配单层、** 跨目录；以 ! 开头 = 反向（排除）。"
+                                    ListText="{Binding GrepIncludes}"/>
+                                <controls:TagListControl Title="Exclude（--exclude）"
+                                    Hint="语法：回车逐条添加；命中任意一条即排除该文件；以 ! 开头 = 豁免（re-include）。"
+                                    ListText="{Binding GrepExcludes}"/>
+                                <controls:TagListControl Title="Exclude-From（--exclude-from）"
+                                    Hint="语法：回车逐条添加「文件路径」；每个文件内每行是一条排除规则（# 开头为注释）。"
+                                    ListText="{Binding GrepExcludeFroms}"/>
+                                <controls:TagListControl Title="Exclude-Dir（--exclude-dir）"
+                                    Hint="语法：回车逐条添加「目录名或相对路径」（如 bin、node_modules），整个目录剪除。"
+                                    ListText="{Binding GrepExcludeDirs}"/>
+                            </StackPanel>
+                            <DockPanel Grid.Column="1" Margin="6,0,0,0">
+                                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal">
+                                    <Button Content="执行" Command="{Binding ExecuteGrepCommand}" Padding="16,3" Margin="0,0,8,0"/>
+                                    <Button Content="取消" Command="{Binding CancelCommand}" Padding="12,3" Margin="0,0,8,0" IsEnabled="{Binding IsRunning}"/>
+                                    <TextBlock Text="已扫描：" VerticalAlignment="Center"/><TextBlock Text="{Binding ScannedCount}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <TextBlock Text="命中文件：" VerticalAlignment="Center"/><TextBlock Text="{Binding HitFileCount}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <TextBlock Text="命中行：" VerticalAlignment="Center"/><TextBlock Text="{Binding HitLineCount}" VerticalAlignment="Center"/>
+                                </StackPanel>
+
+                                <ScrollViewer DockPanel.Dock="Bottom" MaxHeight="330" VerticalScrollBarVisibility="Auto" Margin="0,6,0,0">
+                                    <StackPanel>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                                                <TextBlock Text="输出模式（四选一）"/>
+                                                <RadioButton Content="计数（-c，每文件一行 路径:计数）" IsChecked="{Binding OutputCount}" Margin="0,3,0,0"/>
+                                                <RadioButton Content="含匹配文件（-l）" IsChecked="{Binding OutputFilesWithMatch}" Margin="0,3,0,0"/>
+                                                <RadioButton Content="不含匹配文件（-L）" IsChecked="{Binding OutputFilesWithoutMatch}" Margin="0,3,0,0"/>
+                                                <RadioButton Content="行号详情（-n，默认）" IsChecked="{Binding OutputLineDetails}" Margin="0,3,0,0"/>
+
+                                                <TextBlock Text="开关" Margin="0,10,0,2"/>
+                                                <CheckBox Content="-i 不区分大小写" IsChecked="{Binding IgnoreCase}"/>
+                                                <CheckBox Content="-v 反向匹配" IsChecked="{Binding InvertMatch}"/>
+                                                <CheckBox Content="-w 整词" IsChecked="{Binding WholeWord}"/>
+                                                <CheckBox Content="-x 整行（与 -w 互斥，后选者胜）" IsChecked="{Binding WholeLine}"/>
+                                                <CheckBox Content="-b 字节偏移" IsChecked="{Binding ByteOffset}"/>
+                                                <CheckBox Content="-o 仅匹配片段" IsChecked="{Binding OnlyMatching}"/>
+                                                <CheckBox Content="-s 抑制错误消息" IsChecked="{Binding SuppressErrors}"/>
+                                                <CheckBox Content="--show-eol 行尾显示" IsChecked="{Binding ShowEol}"/>
+                                                <CheckBox Content="-R 跟随符号链接" IsChecked="{Binding FollowSymlinks}"/>
+                                                <CheckBox Content="--hidden 包含隐藏文件" IsChecked="{Binding IncludeHidden}"/>
+                                                <CheckBox Content="--gitignore 读取 .gitignore" IsChecked="{Binding ReadGitignore}"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" Margin="0,0,8,0">
+                                                <TextBlock Text="-m 每文件最大命中行数（0=不限）"/>
+                                                <TextBox Text="{Binding MaxCountText, UpdateSourceTrigger=PropertyChanged}" MaxWidth="120" HorizontalAlignment="Left"/>
+                                                <TextBlock Text="二进制处理" Margin="0,8,0,2"/>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <RadioButton Content="跳过（-I）" GroupName="bin" IsChecked="{Binding BinarySkip}" Margin="0,0,12,0"/>
+                                                    <RadioButton Content="当文本（-a）" GroupName="bin" IsChecked="{Binding BinaryAsText}"/>
+                                                </StackPanel>
+                                                <TextBlock Text="--group-separator（默认 --）" Margin="0,8,0,2"/>
+                                                <TextBox Text="{Binding GroupSeparatorText, UpdateSourceTrigger=PropertyChanged}" MaxWidth="120" HorizontalAlignment="Left"/>
+
+                                                <controls:ContextFieldsControl DataContext="{Binding Context}" Margin="0,10,0,0"/>
+                                            </StackPanel>
+                                        </Grid>
+                                        <Border Padding="0,8,0,0">
+                                            <TextBlock Text="{Binding Toast}" Foreground="Orange" TextWrapping="Wrap"/>
+                                        </Border>
+                                    </StackPanel>
+                                </ScrollViewer>
+
+                                <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,6,0,0">
+                                    <Button Content="复制全部" Command="{Binding CopyGrepResultCommand}" Padding="10,2" Margin="0,0,8,0"/>
+                                    <Button Content="写入 Markdown 编辑器" Command="{Binding WriteGrepToEditorCommand}" Padding="10,2"/>
+                                </StackPanel>
+                                <controls:CodeEditor CodeText="{Binding ResultText, Mode=OneWay}" IsReadOnly="True" FontSize="12"/>
+                            </DockPanel>
+                        </Grid>
+                    </TabItem>
+                </TabControl>
+            </TabItem>
+        </TabControl>
+    </DockPanel>
+</UserControl>

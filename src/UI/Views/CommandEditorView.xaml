@@ -1,0 +1,184 @@
+<UserControl x:Class="GrepExplorer.UI.Views.CommandEditorView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:GrepExplorer.UI.Controls">
+    <DockPanel Margin="4">
+        <!-- 工具栏 -->
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,6">
+            <RadioButton Content="Grep" IsChecked="{Binding IsGrepModeChecked}" GroupName="cemode" Margin="0,0,4,0" Padding="8,2"/>
+            <RadioButton Content="Glob" IsChecked="{Binding IsGlobModeChecked}" GroupName="cemode" Margin="0,0,12,0" Padding="8,2"/>
+            <Button Content="解析 →" Command="{Binding ParseCommand}" Padding="10,2" Margin="0,0,4,0"
+                    ToolTip="命令文本已手改时，点击刷新块列表"/>
+            <Button Content="确认 → 写入搜索页并执行" Command="{Binding ConfirmAndExecuteCommand}" Padding="10,2" Margin="0,0,4,0"/>
+            <Button Content="复制命令" Command="{Binding CopyCommand}" Padding="10,2" Margin="0,0,4,0"/>
+            <Button Content="导出命令 (.txt)" Command="{Binding ExportCommand}" Padding="10,2" Margin="0,0,4,0"/>
+            <Button Content="进入正则编辑器" Command="{Binding EnterRegexEditorCommand}" Padding="10,2"/>
+            <TextBlock Text="{Binding StaleText}" Foreground="Orange" VerticalAlignment="Center" Margin="10,0,0,0"/>
+        </StackPanel>
+
+        <!-- 错误列表（解析报错，含 token 位置与建议） -->
+        <ListBox DockPanel.Dock="Top" x:Name="ErrorsList" ItemsSource="{Binding Errors}" MaxHeight="72"
+                 Visibility="{Binding HasErrors, Converter={StaticResource BoolToVis}}"
+                 FontSize="11" BorderBrush="Red">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Foreground="#D16969" FontWeight="SemiBold" Margin="0,0,4,0"
+                                   Text="{Binding Position, StringFormat=位置 {0}：}"/>
+                        <TextBlock Foreground="#D16969" TextWrapping="Wrap" Text="{Binding Message}"/>
+                        <TextBlock Foreground="#D16969" Opacity="0.75" Margin="6,0,0,0">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="{Binding Suggestion, StringFormat=（建议：{0}）}"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Suggestion}" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="5"/>
+                <ColumnDefinition Width="1.4*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- 左：命令文本 + 块列表 -->
+            <DockPanel Grid.Column="0">
+                <TextBlock DockPanel.Dock="Top" Text="命令文本（块编辑实时重生成；手改后需手动解析）"/>
+                <controls:CodeEditor DockPanel.Dock="Top" CodeText="{Binding CommandText}" ShowLineNumbers="False"
+                                     MinHeight="110" FontSize="12"/>
+                <TextBlock DockPanel.Dock="Top" Text="块列表（有序）" Margin="0,8,0,2"/>
+                <ListBox ItemsSource="{Binding Blocks}" FontFamily="Consolas" FontSize="12">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal" Opacity="{Binding IsInactive, Converter={StaticResource InactiveToOpacity}}">
+                                <TextBlock Text="{Binding Flag, StringFormat=[{0}]}" FontWeight="SemiBold" Margin="0,0,6,0"/>
+                                <TextBlock Text="{Binding Value}" Foreground="{Binding ErrorBrush}"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+
+            <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch"/>
+
+            <!-- 右：参数表单区 -->
+            <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="6,0">
+                    <TextBlock Text="Pattern（多值 OR，仅 Grep）"/>
+                    <ItemsControl ItemsSource="{Binding PatternItems}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <DockPanel Margin="0,1">
+                                    <Button DockPanel.Dock="Right" Content="✎" Command="{Binding OpenRegexCommand}" Padding="4,0"
+                                            ToolTip="在正则编辑器中编辑该项"/>
+                                    <Button DockPanel.Dock="Right" Content="↑" Command="{Binding MoveUpCommand}" Padding="4,0"/>
+                                    <Button DockPanel.Dock="Right" Content="✕" Command="{Binding RemoveCommand}" Padding="4,0"/>
+                                    <TextBox Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}" FontFamily="Consolas" Padding="2"/>
+                                </DockPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <StackPanel Orientation="Horizontal" Margin="0,3">
+                        <Button Content="添加" Command="{Binding AddPatternCommand}" Padding="8,1"/>
+                    </StackPanel>
+
+                    <controls:TagListControl Title="Pattern 文件 -f"
+                        Hint="语法：回车逐条添加「文件路径」；每个文件内每行是一个 Pattern（-e 直接在上方 Pattern 列表里逐条填写）。"
+                        ListText="{Binding PatternFilesText}"/>
+                    <controls:TagListControl Title="Glob 表达式 -g（仅 Glob 模式）"
+                        Hint="语法：回车逐条添加；* 不跨 /、** 跨 /、? 单字符；以 / 开头 = 相对搜索根。"
+                        ListText="{Binding GlobsText}"/>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,4">
+                        <CheckBox Content="-F 字面量" IsChecked="{Binding FixedStrings}" ToolTip="默认 .NET Regex（-E）"/>
+                        <CheckBox Content="-i 不区分大小写" IsChecked="{Binding IgnoreCase}" Margin="12,0,0,0"/>
+                        <CheckBox Content="-v 反向匹配" IsChecked="{Binding InvertMatch}" Margin="12,0,0,0"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,4">
+                        <CheckBox Content="-w 整词" IsChecked="{Binding WholeWord}"/>
+                        <CheckBox Content="-x 整行" IsChecked="{Binding WholeLine}" Margin="12,0,0,0"/>
+                        <CheckBox Content="-s 抑制错误" IsChecked="{Binding SuppressErrors}" Margin="12,0,0,0"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,4">
+                        <TextBlock Text="-m 最大命中" VerticalAlignment="Center"/>
+                        <TextBox Width="60" Text="{Binding MaxCountText, UpdateSourceTrigger=PropertyChanged}" Margin="6,0"/>
+                        <TextBlock Text="0=不限" Opacity="0.6" VerticalAlignment="Center"/>
+                    </StackPanel>
+
+                    <TextBlock Text="输出模式（UI 默认 -n 行号详情）"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,2">
+                        <RadioButton Content="-c 计数" GroupName="ceout" IsChecked="{Binding OutputCount}" Padding="6,0"/>
+                        <RadioButton Content="-l 含匹配" GroupName="ceout" IsChecked="{Binding OutputFilesWithMatch}" Margin="8,0,0,0" Padding="6,0"/>
+                        <RadioButton Content="-L 不含匹配" GroupName="ceout" IsChecked="{Binding OutputFilesWithoutMatch}" Margin="8,0,0,0" Padding="6,0"/>
+                        <RadioButton Content="-n 行号详情" GroupName="ceout" IsChecked="{Binding OutputLineDetails}" Margin="8,0,0,0" Padding="6,0"/>
+                    </StackPanel>
+
+                    <controls:ContextFieldsControl DataContext="{Binding Context}" Margin="0,6,0,0"/>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                        <CheckBox Content="-b 字节偏移" IsChecked="{Binding ByteOffset}" IsEnabled="{Binding IsOutputLineDetails}"/>
+                        <CheckBox Content="-o 仅匹配片段" IsChecked="{Binding OnlyMatching}" Margin="12,0,0,0" IsEnabled="{Binding IsOutputLineDetails}"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,4">
+                        <TextBlock Text="--group-separator" VerticalAlignment="Center"/>
+                        <TextBox Width="80" Text="{Binding GroupSeparatorText, UpdateSourceTrigger=PropertyChanged}" Margin="6,0"
+                                 IsEnabled="{Binding IsOutputLineDetails}"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,4">
+                        <CheckBox Content="--show-eol 行尾显示" IsChecked="{Binding ShowEol}" IsEnabled="{Binding IsGrepMode}"/>
+                        <CheckBox Content="-a 二进制当文本" IsChecked="{Binding BinaryAsText}" Margin="12,0,0,0"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,4">
+                        <CheckBox Content="-R 跟随符号链接" IsChecked="{Binding FollowSymlinks}"/>
+                        <CheckBox Content="--hidden 隐藏文件" IsChecked="{Binding IncludeHidden}" Margin="12,0,0,0"/>
+                        <CheckBox Content="--gitignore" IsChecked="{Binding ReadGitignore}" Margin="12,0,0,0"/>
+                    </StackPanel>
+
+                    <controls:TagListControl Title="Include（--include）"
+                        Hint="语法：回车逐条添加；* 匹配单层、** 跨目录；以 ! 开头 = 反向（排除）。"
+                        ListText="{Binding IncludesText}"/>
+                    <controls:TagListControl Title="Exclude（--exclude）"
+                        Hint="语法：回车逐条添加；命中任意一条即排除该文件；以 ! 开头 = 豁免（re-include）。"
+                        ListText="{Binding ExcludesText}"/>
+                    <controls:TagListControl Title="Exclude-From（--exclude-from）"
+                        Hint="语法：回车逐条添加「文件路径」；每个文件内每行是一条排除规则（# 开头为注释）。"
+                        ListText="{Binding ExcludeFromsText}"/>
+                    <controls:TagListControl Title="Exclude-Dir（--exclude-dir）"
+                        Hint="语法：回车逐条添加「目录名或相对路径」（如 bin、node_modules），整个目录剪除。"
+                        ListText="{Binding ExcludeDirsText}"/>
+
+                    <!-- 组多选下拉 -->
+                    <TextBlock Text="组（勾选自动追加 Group 块，去重）" Margin="0,6,0,2"/>
+                    <ToggleButton x:Name="GroupsToggle" Content="选择组 ▾" HorizontalAlignment="Left" Padding="10,2"/>
+                    <Popup IsOpen="{Binding IsChecked, ElementName=GroupsToggle}" PlacementTarget="{Binding ElementName=GroupsToggle}" StaysOpen="False">
+                        <Border Background="{DynamicResource {x:Static SystemColors.WindowBrushKey}}"
+                                BorderBrush="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}"
+                                BorderThickness="1" MaxHeight="220" MinWidth="220" Padding="4">
+                            <ScrollViewer>
+                                <ItemsControl ItemsSource="{Binding AvailableGroups}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <CheckBox Content="{Binding Alias}" IsChecked="{Binding IsChecked, UpdateSourceTrigger=PropertyChanged}" Margin="2,1"/>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Border>
+                    </Popup>
+
+                    <TextBlock Text="根目录（位置参数，末尾）" Margin="0,8,0,2"/>
+                    <TextBox Text="{Binding RootPath, UpdateSourceTrigger=PropertyChanged}" Padding="2"/>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+    </DockPanel>
+</UserControl>

@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <OutputType>Library</OutputType>
+    <RootNamespace>GrepExplorer.UI</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AvalonEdit" Version="6.3.1.120" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
+    <!-- Fluent 主题由 .NET 10 WPF 运行时内置提供：
+         Source="/PresentationFramework.Fluent;component/Themes/Fluent.xaml"，无需 NuGet 包 -->
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Core\Globbing\Core.Globbing.csproj" />
+    <ProjectReference Include="..\Core\Grep\Core.Grep.csproj" />
+    <ProjectReference Include="..\Core\Groups\Core.Groups.csproj" />
+    <ProjectReference Include="..\Core\History\Core.History.csproj" />
+    <ProjectReference Include="..\Core\Diff\Core.Diff.csproj" />
+    <ProjectReference Include="..\Infrastructure\Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>
