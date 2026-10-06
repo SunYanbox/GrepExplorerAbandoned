@@ -1,0 +1,35 @@
+<Application x:Class="GrepExplorer.App.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:GrepExplorer.UI.Controls;assembly=UI">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!-- WPF Fluent 主题（.NET 10 运行时内置），跟随系统深浅色 -->
+                <ResourceDictionary Source="/PresentationFramework.Fluent;component/Themes/Fluent.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+
+            <!-- 值转换器（供各视图 StaticResource 引用） -->
+            <controls:BoolToVisibilityConverter x:Key="BoolToVis"/>
+            <controls:InactiveToOpacityConverter x:Key="InactiveToOpacity"/>
+            <controls:ZeroToVisibilityConverter x:Key="ZeroToVis"/>
+
+            <!--
+                输入框可见性：Fluent 主题下 TextBox 边框过淡，和背景几乎同色，用户看不出哪里能输入。
+                这里统一补一圈可见边框 + 极淡底色（深浅色主题下都可见）。
+            -->
+            <Style TargetType="TextBox">
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="BorderBrush" Value="#66888888"/>
+                <Setter Property="Background" Value="#14808080"/>
+                <Setter Property="Padding" Value="4,2"/>
+                <Setter Property="VerticalContentAlignment" Value="Center"/>
+            </Style>
+            <Style TargetType="PasswordBox">
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="BorderBrush" Value="#66888888"/>
+                <Setter Property="Background" Value="#14808080"/>
+            </Style>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>
