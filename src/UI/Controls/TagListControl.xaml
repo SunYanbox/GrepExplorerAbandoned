@@ -1,0 +1,74 @@
+<UserControl x:Class="GrepExplorer.UI.Controls.TagListControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Border BorderThickness="1" BorderBrush="#33888888" CornerRadius="3" Padding="4" Margin="0,5,0,0">
+        <DockPanel>
+            <!-- 头部：标题 + 条数 + 快捷操作 -->
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,2">
+                <TextBlock Text="{Binding Title, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                           FontWeight="SemiBold" VerticalAlignment="Center"/>
+                <TextBlock x:Name="CountText" Text="0 条" Margin="6,0" Opacity="0.7" VerticalAlignment="Center"/>
+                <Button Content="复制全部" Click="CopyAll" Padding="6,1" FontSize="11" Margin="2,0" ToolTip="以「每行一条」复制到剪贴板"/>
+                <Button Content="清空" Click="ClearAll" Padding="6,1" FontSize="11" Margin="2,0"/>
+            </StackPanel>
+
+            <!-- 语法说明：告诉用户每个元素如何分隔、支持什么写法 -->
+            <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Opacity="0.65" FontSize="11" Margin="0,0,0,3"
+                       Text="{Binding Hint, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+
+            <!-- 输入框：输入后回车 → 生成标签；粘贴多行文本自动拆分 -->
+            <DockPanel DockPanel.Dock="Bottom" Margin="0,3,0,0">
+                <TextBlock DockPanel.Dock="Left" Text="添加：" VerticalAlignment="Center" Opacity="0.75" Margin="0,0,4,0"/>
+                <TextBox x:Name="NewTagBox" FontFamily="Consolas"
+                         KeyDown="OnNewTagKeyDown" TextChanged="OnNewTagTextChanged"
+                         ToolTip="输入一条内容后按回车（Enter）添加为标签；也可直接粘贴多行文本，自动拆分为多个标签"/>
+            </DockPanel>
+
+            <!-- 标签区：双击重命名，右侧 ✕ 删除 -->
+            <ItemsControl x:Name="TagsControl" MinHeight="30">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Background="#22808080" BorderBrush="#44888888" BorderThickness="1"
+                                CornerRadius="10" Padding="8,2" Margin="0,2,6,2">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{Binding Text}" FontFamily="Consolas" VerticalAlignment="Center"
+                                           Cursor="Hand" MouseLeftButtonDown="OnChipMouseDown"
+                                           ToolTip="双击可重新编辑；右侧 ✕ 删除">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsEditing}" Value="True">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBox Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}" MinWidth="110"
+                                         FontFamily="Consolas" IsVisibleChanged="OnEditBoxVisible"
+                                         KeyDown="OnEditBoxKeyDown" LostFocus="OnEditBoxLostFocus">
+                                    <TextBox.Style>
+                                        <Style TargetType="TextBox">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsEditing}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBox.Style>
+                                </TextBox>
+                                <Button Content="✕" Click="OnRemoveChip" Padding="2,0" Margin="4,0,0,0" FontSize="10"
+                                        Background="Transparent" BorderThickness="0" VerticalAlignment="Center"
+                                        ToolTip="删除该标签"/>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </DockPanel>
+    </Border>
+</UserControl>

@@ -1,0 +1,63 @@
+<UserControl x:Class="GrepExplorer.UI.Controls.ContextFieldsControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Context 三输入框（2.7）：联动禁用、× 清空、超限红框 -->
+    <StackPanel>
+        <TextBlock Text="上下文行数（0 = 只显示命中行本身；这三项是在命中行之上/之下【额外】多显示的行数）"
+                   TextWrapping="Wrap" Opacity="0.85"/>
+        <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+            <TextBlock Text="Before" VerticalAlignment="Center" Margin="0,0,3,0"/>
+            <TextBox Width="52" Text="{Binding Before, UpdateSourceTrigger=PropertyChanged}"
+                     IsEnabled="{Binding BeforeEnabled}"
+                     ToolTip="{Binding TooltipText}">
+                <TextBox.Style>
+                    <Style TargetType="TextBox">
+                        <Setter Property="BorderBrush" Value="{x:Null}"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding BeforeError}" Value="True">
+                                <Setter Property="BorderBrush" Value="Red"/>
+                                <Setter Property="BorderThickness" Value="2"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBox.Style>
+            </TextBox>
+            <TextBlock Text="After" VerticalAlignment="Center" Margin="10,0,3,0"/>
+            <TextBox Width="52" Text="{Binding After, UpdateSourceTrigger=PropertyChanged}"
+                     IsEnabled="{Binding AfterEnabled}"
+                     ToolTip="{Binding TooltipText}">
+                <TextBox.Style>
+                    <Style TargetType="TextBox">
+                        <Setter Property="BorderBrush" Value="{x:Null}"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding AfterError}" Value="True">
+                                <Setter Property="BorderBrush" Value="Red"/>
+                                <Setter Property="BorderThickness" Value="2"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBox.Style>
+            </TextBox>
+            <TextBlock Text="Context" VerticalAlignment="Center" Margin="10,0,3,0"/>
+            <TextBox Width="52" Text="{Binding Context, UpdateSourceTrigger=PropertyChanged}"
+                     IsEnabled="{Binding ContextEnabled}"
+                     ToolTip="{Binding TooltipText}">
+                <TextBox.Style>
+                    <Style TargetType="TextBox">
+                        <Setter Property="BorderBrush" Value="{x:Null}"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding ContextError}" Value="True">
+                                <Setter Property="BorderBrush" Value="Red"/>
+                                <Setter Property="BorderThickness" Value="2"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBox.Style>
+            </TextBox>
+            <Button Content="×" Command="{Binding ClearCommand}" Padding="6,0" Margin="8,0,0,0"
+                    ToolTip="清空全部上下文并恢复可用"/>
+        </StackPanel>
+        <TextBlock TextWrapping="Wrap" Opacity="0.6" FontSize="11" Margin="0,3,0,0"
+                   Text="用法：Before / After = 只在上方或下方多显示 N 行（单侧，填了就禁用 Context）；Context = 上下对称各多显示 N 行。"/>
+    </StackPanel>
+</UserControl>
