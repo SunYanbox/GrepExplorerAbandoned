@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <InvariantGlobalization>false</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.0" />
+    <!-- 覆盖 SQLitePCLRaw.bundle_e_sqlite3 → lib.e_sqlite3 传递引入的 2.1.11（NU1903：GHSA-2m69-gcr7-jv3q） -->
+    <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.1.13" />
+  </ItemGroup>
+
+</Project>
