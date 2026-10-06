@@ -1,10 +1,59 @@
 # Grep Explorer
 
-一个面向 Windows 的 WPF 桌面工具：以 **ripgrep 语义的 Glob** 与 **.NET Regex 的 Grep** 搜索本地文件，
-内置 **Markdown 编辑器**、**正则编辑器**、**grep 风格命令编辑器**、**组管理** 与 **历史记录**，
-全部 UI 为中文，主题跟随系统深浅色（WPF Fluent）。
+> ## ⚠️ 当前状态：不可用，开发已停止
+>
+> **这个项目用不了，请不要构建后当作工具使用。**
+> UI 交互层存在系统性缺陷，经过多轮修复后仍未通过实际使用验收，作者已放弃继续投入。
+> 仓库保留下来只有两个用途：存档，以及把 `src/Core` / `src/Infrastructure`
+> （Glob 解释器、Grep 引擎、grep 风格命令解析、组与历史、词级 Diff）**单独**拿去复用。
+>
+> 本文档以下内容是**最初的设计说明**，不是"已实现且验证通过"的功能清单；
+> 其中相当一部分描述与真实运行行为不一致，请只当作参考资料阅读。
+
+最初的设计目标是：一个面向 Windows 的 WPF 桌面工具，以 **ripgrep 语义的 Glob** 与 **.NET Regex 的 Grep**
+搜索本地文件，内置 **Markdown 编辑器**、**正则编辑器**、**grep 风格命令编辑器**、**组管理** 与 **历史记录**，
+全部 UI 为中文，主题跟随系统深浅色（WPF Fluent）。**这些目标没有达成。**
+
+## 0. 为什么说它不能用
+
+编译能过、单元测试也能过，但这些都不代表可用：97 条测试只覆盖 `src/Core` 里与 UI 无关的纯逻辑，
+**UI 层（`src/UI`、`src/App`）没有任何自动化验证**，而问题恰恰集中在 UI 层。
+
+### 0.1 当前主要问题（未修复）
+
+使用者最近一次试用后报告的问题，全部集中在 UI 层：
+
+| 现象 | 说明 |
+|---|---|
+| Glob / Grep 模式切换在界面上看不出来 | 两种模式的界面在控件区分度与排版上都有大量问题，切过去和切回来看起来几乎一样，无法判断当前处在哪种模式 |
+| 看不出选中了哪个组 / 哪条历史记录 / 哪个模式 | 选中态没有可见的视觉反馈，无法确认当前选中/勾选的是哪一项 |
+| 随机崩溃 | 运行过程中会无规律崩溃、窗口直接消失；可能残留进程，清理方式见第 1 节 |
+| Grep 模式只搜索到路径 | 结果只给出文件路径，拿不到命中的行内容 |
+| 命令编辑器里设置的组不生效 | 在命令编辑器中指定组之后，实际搜索并没有按该组的 include / exclude 规则执行，等于组规则被忽略 |
+
+### 0.2 已修复（由使用者确认，仅限这些）
+
+- 界面元素点不动（左侧导航项、顶栏"转到…"按钮点击无响应）
+- 输入控件不可发现（输入框与背景同色、看不出哪里可以输入）
+- 命令编辑器缺失（曾直接渲染出视图模型类名 `GrepExplorer.UI.ViewModels.CommandEditorViewModel`）
+- 搜索语义不符预期（Grep 只输出文件级结果；包含/排除等规则没有分隔方式与语法说明）
+- 结果误报差异（未改动结果与元数据却提示"存在差异"）
+
+> 这些修复**没有配套的自动化回归测试**（UI 层没有测试），随时可能因后续改动而回退。
+
+### 0.3 根因
+
+根因不是零散的 bug，而是 WPF 绑定层缺少静态校验：`{Binding}` 指向不存在的成员时**静默失效**——
+不抛异常、不报错，控件就是不动。本项目里这类静默失败一度成片存在（命令属性名、
+`RadioButton.IsChecked` 的只读绑定、缺失的 `DataTemplate`、未注册的转换器都可能触发）。
+"能编译、测试全绿"与"界面可用"之间没有任何保障，这是本项目放弃维护的直接原因。
+
+> 结论：**请把本项目视为一次失败的技术尝试。** 如果你仍想利用其中的代码，
+> 建议只取 `src/Core` 与 `src/Infrastructure`，UI 层从头重写。
 
 ## 1. 构建步骤
+
+> 即使下面的命令全部成功，产出的程序仍然是**不可用**的（见上一节）；此节仅为复现与存档。
 
 要求：Windows 10/11 + [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)（net10.0-windows）。
 
@@ -15,13 +64,26 @@ dotnet build GrepExplorer.slnx -c Release
 # 运行
 dotnet run --project src/App/App.csproj -c Release
 
-# 运行单元测试（97 条，xunit）
+# 运行单元测试（97 条，xunit）—— 只覆盖 src/Core，不代表程序可用
 dotnet test tests/Core.Tests/Core.Tests.csproj
 ```
 
-- 产物：`src/App/bin/Release/net10.0-windows/GrepExplorer.exe`
+- 产物：`src/App/bin/Release/net10.0-windows/GrepExplorer.exe`（**能编译出来，但不可用**）
 - 数据目录：`%LOCALAPPDATA%\GrepExplorer\`（`history.db`（WAL）、`snapshots\`、`config.json`）
 - 多实例：允许同时运行多个实例；每次启动的工作目录 = 进程启动目录（`Environment.CurrentDirectory`），不恢复"上次目录"。
+- 注意：`Ctrl+F` / `Ctrl+H` / `Ctrl+S` / `取消` 等交互均未通过人工验收，见第 0.1 节。
+
+> ### ⚠️ 崩溃后请手动清理残留进程
+>
+> 如果运行编译后的 `src/App/App.csproj` 时窗口突然崩溃消失了，
+> 请在**管理员终端**运行下面这条命令，清理可能残留的进程：
+>
+> ```powershell
+> taskkill /F /IM GrepExplorer.exe
+> ```
+>
+> 程序会随机崩溃（见第 0.1 节），窗口消失并不代表进程已经退出；
+> 残留进程会继续占用数据库与快照文件，可能影响下一次启动。
 
 ## 2. 快捷键
 
@@ -134,6 +196,8 @@ SQLite WAL + `busy_timeout=5000ms` + SQLITE_BUSY 指数退避重试（连接工�
 
 ## 5. 项目结构
 
+> `src/UI` 与 `src/App` 是**不被推荐使用**的部分；可复用的是 `src/Core` 与 `src/Infrastructure`。
+
 ```
 GrepExplorer.slnx
 src/App               启动、DI 装配、Fluent 主题（/PresentationFramework.Fluent;component/Themes/Fluent.xaml）
@@ -146,7 +210,7 @@ src/Core/Groups       组 CRUD、规则合并（include OR / exclude OR / 一票
 src/Core/History      历史持久化、六种清理、滚动上限
 src/Core/Diff         DiffPlex 词级 Inline Diff
 src/Infrastructure    SQLite 连接工厂（WAL/重试）、文件系统遍历、AppConfig
-tests/Core.Tests      97 条单元测试
+tests/Core.Tests      97 条单元测试（只覆盖 Core）
 ```
 
 ## 6. 第三方依赖（仅限清单内）
@@ -169,3 +233,8 @@ tests/Core.Tests      97 条单元测试
 不做 Markdown 预览 / HTML / PDF；不做跨文件批量替换；不自动读 .gitignore（除非 `--gitignore`）；
 不做组间 AND；不做正则调试器；不做多语言/主题切换；不做启动参数解析；
 编辑器内容永不回写数据库；UNC 网络路径扫描前需确认。
+
+## 8. 停止维护
+
+本项目已归档，不再接受功能请求与缺陷修复。上文第 0.1 节列出的问题不会再有后续提交；
+如需继续，请把 `src/Core` + `src/Infrastructure` 提取到新项目中，并重写整个 UI 层。
