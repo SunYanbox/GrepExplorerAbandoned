@@ -1,0 +1,11 @@
+<Solution>
+  <Project Path="src/App/App.csproj" />
+  <Project Path="src/UI/UI.csproj" />
+  <Project Path="src/Core/Globbing/Core.Globbing.csproj" />
+  <Project Path="src/Core/Grep/Core.Grep.csproj" />
+  <Project Path="src/Core/Groups/Core.Groups.csproj" />
+  <Project Path="src/Core/History/Core.History.csproj" />
+  <Project Path="src/Core/Diff/Core.Diff.csproj" />
+  <Project Path="src/Infrastructure/Infrastructure.csproj" />
+  <Project Path="tests/Core.Tests/Core.Tests.csproj" />
+</Solution>
